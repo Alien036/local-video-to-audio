@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Video to Audio — Stüdyo Kalitesinde Ses Dönüştürücü</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            desert: {
+              bg: '#121110',
+              card: '#1c1917',
+              accent: '#d97706'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #121110;
+      color: #e7e5e4;
+      font-family: 'Inter', sans-serif;
+    }
+    .drop-zone-active {
+      border-color: #d97706 !important;
+      background-color: rgba(217, 119, 6, 0.08) !important;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#121110] text-stone-200 flex flex-col justify-between selection:bg-amber-600/30 selection:text-amber-300">
+
+  <!-- Üst Dekoratif Işıltı -->
+  <div class="pointer-events-none fixed inset-x-0 top-0 h-64 bg-gradient-to-b from-amber-600/10 via-amber-900/5 to-transparent"></div>
+
+  <!-- Ana İçerik -->
+  <main class="relative z-10 w-full max-w-2xl mx-auto px-4 py-10 sm:py-16">
+    
+    <!-- Başlık Alanı -->
+    <header class="text-center mb-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1c1917] border border-stone-800 text-amber-500 text-xs font-medium mb-4 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-[#d97706] animate-ping"></span>
+        <span>%100 Local &bull; FFmpeg Motoru</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-stone-100">
+        Video <span class="text-[#d97706]">&rarr;</span> Ses Dönüştürücü
+      </h1>
+      <p class="mt-2 text-sm text-stone-400 max-w-md mx-auto">
+        Videolarınızı buluta yüklemeden, tamamen kendi cihazınızda yüksek kaliteli MP3 veya kayıpsız WAV formatına dönüştürün.
+      </p>
+    </header>
+
+    <!-- Ana Kart -->
+    <div class="bg-[#1c1917] border border-stone-800 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/60">
+      <form id="convertForm" class="space-y-6" novalidate>
+
+        <!-- Sürükle-Bırak Video Yükleme Alanı -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-400 mb-2">
+            Kaynak Video Dosyası
+          </label>
+          <div
+            id="dropZone"
+            class="relative group cursor-pointer border-2 border-dashed border-stone-800 hover:border-amber-600/60 rounded-xl p-8 transition-all duration-200 bg-[#121110]/60 hover:bg-[#121110] text-center"
+          >
+            <input
+              type="file"
+              id="videoInput"
+              name="video"
+              accept="video/*,.mp4,.mkv,.avi,.mov,.webm,.flv,.wmv,.m4v"
+              multiple
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            />
+
+            <!-- Boş Durum Görünümü -->
+            <div id="emptyState" class="space-y-3">
+              <div class="w-14 h-14 mx-auto rounded-2xl bg-[#1c1917] border border-stone-800 flex items-center justify-center group-hover:border-amber-600/50 group-hover:scale-105 transition-all">
+                <svg class="w-7 h-7 text-[#d97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-stone-200">
+                  Videoyu buraya sürükleyip bırakın veya <span class="text-[#d97706] underline decoration-amber-600/50 underline-offset-4">dosya seçin</span>
+                </p>
+                <p class="text-xs text-stone-500 mt-1">
+                  MP4, MKV, MOV, AVI, WEBM desteklenir &bull; Tekli veya çoklu seçim
+                </p>
+              </div>
+            </div>
+
+            <!-- Seçili Dosya Görünümü -->
+            <div id="selectedState" class="hidden text-left">
+              <div class="flex items-center justify-between gap-4 bg-[#1c1917] border border-stone-800 rounded-xl p-4">
+                <div class="flex items-center gap-3.5 min-w-0">
+                  <div class="w-11 h-11 rounded-lg bg-amber-600/15 border border-amber-600/30 flex items-center justify-center shrink-0 text-[#d97706]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p id="fileNameDisplay" class="text-sm font-semibold text-stone-100 truncate">video.mp4</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span id="fileSizeDisplay" class="text-xs font-mono text-amber-500">0.00 MB</span>
+                      <span id="fileCountBadge" class="hidden text-[11px] px-2 py-0.5 rounded bg-stone-800 text-stone-300 font-medium"></span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  id="removeFileBtn"
+                  class="relative z-20 p-2 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800/80 transition-colors"
+                  title="Dosyayı kaldır"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div id="extraFilesList" class="hidden mt-2 space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Format ve Bitrate Ayarları -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Çıktı Formatı -->
+          <div>
+            <label for="formatSelect" class="block text-xs font-semibold uppercase tracking-wider text-stone-400 mb-2">
+              Çıktı Formatı
+            </label>
+            <div class="relative">
+              <select
+                id="formatSelect"
+                name="format"
+                class="w-full appearance-none bg-[#121110] border border-stone-800 focus:border-[#d97706] focus:ring-1 focus:ring-[#d97706] rounded-xl px-4 py-3 text-sm text-stone-100 font-medium outline-none transition-all cursor-pointer"
+              >
+                <option value="mp3">MP3 (Sıkıştırılmış &bull; Evrensel)</option>
+                <option value="wav">WAV (Kayıpsız &bull; PCM 16-Bit)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-stone-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ses Kalitesi (Bitrate) -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="bitrateSelect" class="block text-xs font-semibold uppercase tracking-wider text-stone-400">
+                Ses Kalitesi (Bitrate)
+              </label>
+              <span id="wavNotice" class="hidden text-[11px] text-amber-500/90 font-medium">
+                WAV kayıpsızdır
+              </span>
+            </div>
+            <div class="relative">
+              <select
+                id="bitrateSelect"
+                name="bitrate"
+                class="w-full appearance-none bg-[#121110] border border-stone-800 focus:border-[#d97706] focus:ring-1 focus:ring-[#d97706] rounded-xl px-4 py-3 text-sm text-stone-100 font-medium outline-none transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-stone-900/50"
+              >
+                <option value="128k">128 kbps (Standart Kalite)</option>
+                <option value="192k" selected>192 kbps (Yüksek Kalite)</option>
+                <option value="320k">320 kbps (Stüdyo / Maksimum)</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-stone-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opsiyonel Videoyu Kırp (Trim) Alanı -->
+        <div class="bg-[#121110]/70 border border-stone-800 rounded-xl p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-[#d97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+              </svg>
+              <span class="text-xs font-semibold uppercase tracking-wider text-stone-300">
+                Videoyu Kırp (Trim)
+              </span>
+            </div>
+            <span class="text-[11px] text-stone-500 font-medium px-2 py-0.5 rounded bg-[#1c1917] border border-stone-800">
+              Opsiyonel
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="startTime" class="block text-xs text-stone-400 mb-1.5">
+                Başlangıç Zamanı
+              </label>
+              <input
+                type="text"
+                id="startTime"
+                name="startTime"
+                placeholder="Örn: 00:00:15"
+                class="w-full bg-[#1c1917] border border-stone-800 focus:border-[#d97706] focus:ring-1 focus:ring-[#d97706] rounded-lg px-3.5 py-2.5 text-sm font-mono text-stone-100 placeholder-stone-600 outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label for="endTime" class="block text-xs text-stone-400 mb-1.5">
+                Bitiş Zamanı
+              </label>
+              <input
+                type="text"
+                id="endTime"
+                name="endTime"
+                placeholder="Örn: 00:02:30"
+                class="w-full bg-[#1c1917] border border-stone-800 focus:border-[#d97706] focus:ring-1 focus:ring-[#d97706] rounded-lg px-3.5 py-2.5 text-sm font-mono text-stone-100 placeholder-stone-600 outline-none transition-all"
+              />
+            </div>
+          </div>
+          <p class="text-[11px] text-stone-500 mt-2.5">
+            Videonun tamamını sese dönüştürmek için bu alanları boş bırakabilirsiniz. Format: <code class="text-stone-400 font-mono">SS:DD:SN</code>
+          </p>
+        </div>
+
+        <!-- Durum / Hata / Başarı Bildirim Kutusu -->
+        <div id="statusBox" class="hidden rounded-xl p-4 border text-sm"></div>
+
+        <!-- Dönüştür Butonu -->
+        <button
+          type="submit"
+          id="submitBtn"
+          class="w-full py-3.5 px-6 rounded-xl bg-[#d97706] hover:bg-amber-500 active:bg-amber-700 text-stone-950 font-semibold text-sm tracking-wide shadow-lg shadow-amber-600/20 hover:shadow-amber-500/30 transition-all flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <!-- Normal Durum İkonu -->
+          <svg id="btnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+          </svg>
+          <!-- Yükleniyor Spinner İkonu -->
+          <svg id="btnSpinner" class="hidden w-5 h-5 animate-spin text-stone-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span id="btnText">Sese Dönüştür ve İndir</span>
+        </button>
+
+      </form>
+    </div>
+
+    <!-- Alt Bilgi Kartları -->
+    <div class="grid grid-cols-3 gap-3 mt-6 text-center">
+      <div class="bg-[#1c1917]/70 border border-stone-800/80 rounded-xl p-3">
+        <p class="text-xs font-semibold text-stone-300">Gizlilik Odaklı</p>
+        <p class="text-[11px] text-stone-500 mt-0.5">Dosyalar cihazınızdan çıkmaz</p>
+      </div>
+      <div class="bg-[#1c1917]/70 border border-stone-800/80 rounded-xl p-3">
+        <p class="text-xs font-semibold text-stone-300">Otomatik Temizlik</p>
+        <p class="text-[11px] text-stone-500 mt-0.5">Geçici dosyalar anında silinir</p>
+      </div>
+      <div class="bg-[#1c1917]/70 border border-stone-800/80 rounded-xl p-3">
+        <p class="text-xs font-semibold text-stone-300">Yüksek Hız</p>
+        <p class="text-[11px] text-stone-500 mt-0.5">Yerel FFmpeg donanım gücü</p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="text-center py-6 text-xs text-stone-600 border-t border-stone-900">
+    Local Video to Audio Converter &bull; Node.js &amp; FFmpeg ile güçlendirildi
+  </footer>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const videoInput = document.getElementById('videoInput');
+    const emptyState = document.getElementById('emptyState');
+    const selectedState = document.getElementById('selectedState');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+    const fileCountBadge = document.getElementById('fileCountBadge');
+    const extraFilesList = document.getElementById('extraFilesList');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+
+    const formatSelect = document.getElementById('formatSelect');
+    const bitrateSelect = document.getElementById('bitrateSelect');
+    const wavNotice = document.getElementById('wavNotice');
+    const startTimeInput = document.getElementById('startTime');
+    const endTimeInput = document.getElementById('endTime');
+
+    const convertForm = document.getElementById('convertForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnIcon = document.getElementById('btnIcon');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const btnText = document.getElementById('btnText');
+    const statusBox = document.getElementById('statusBox');
+
+    let selectedFiles = [];
+
+    // MB cinsinden boyut hesaplama
+    function formatToMB(bytes) {
+      const mb = bytes / (1024 * 1024);
+      return `${mb.toFixed(2)} MB`;
+    }
+
+    // Durum mesajı gösterme
+    function showStatus(message, type = 'info') {
+      statusBox.classList.remove('hidden', 'bg-red-950/40', 'border-red-800/60', 'text-red-300', 'bg-emerald-950/40', 'border-emerald-800/60', 'text-emerald-300', 'bg-amber-950/30', 'border-amber-700/50', 'text-amber-300');
+
+      if (type === 'error') {
+        statusBox.classList.add('bg-red-950/40', 'border-red-800/60', 'text-red-300');
+      } else if (type === 'success') {
+        statusBox.classList.add('bg-emerald-950/40', 'border-emerald-800/60', 'text-emerald-300');
+      } else {
+        statusBox.classList.add('bg-amber-950/30', 'border-amber-700/50', 'text-amber-300');
+      }
+
+      statusBox.textContent = message;
+    }
+
+    function hideStatus() {
+      statusBox.classList.add('hidden');
+    }
+
+    // Dosya seçimi arayüzünü güncelle
+    function updateFileUI(files) {
+      selectedFiles = Array.from(files || []);
+      hideStatus();
+
+      if (selectedFiles.length === 0) {
+        emptyState.classList.remove('hidden');
+        selectedState.classList.add('hidden');
+        videoInput.value = '';
+        return;
+      }
+
+      const firstFile = selectedFiles[0];
+      const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+
+      fileNameDisplay.textContent = firstFile.name;
+      fileSizeDisplay.textContent = formatToMB(totalBytes);
+
+      if (selectedFiles.length > 1) {
+        fileCountBadge.textContent = `+${selectedFiles.length - 1} dosya daha`;
+        fileCountBadge.classList.remove('hidden');
+        extraFilesList.innerHTML = selectedFiles.slice(1).map(f => `
+          <div class="flex items-center justify-between text-xs bg-[#1c1917]/80 border border-stone-800/80 rounded-lg px-3 py-1.5 text-stone-400">
+            <span class="truncate pr-2">${f.name}</span>
+            <span class="font-mono text-stone-500 shrink-0">${formatToMB(f.size)}</span>
+          </div>
+        `).join('');
+        extraFilesList.classList.remove('hidden');
+      } else {
+        fileCountBadge.classList.add('hidden');
+        extraFilesList.classList.add('hidden');
+        extraFilesList.innerHTML = '';
+      }
+
+      emptyState.classList.add('hidden');
+      selectedState.classList.remove('hidden');
+    }
+
+    // Sürükle & Bırak Olayları
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('drop-zone-active');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drop-zone-active');
+      });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        updateFileUI(files);
+      }
+    });
+
+    videoInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        updateFileUI(e.target.files);
+      }
+    });
+
+    removeFileBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      updateFileUI([]);
+    });
+
+    // Format seçimine göre Bitrate kutusunu etkinleştir / devre dışı bırak
+    formatSelect.addEventListener('change', () => {
+      if (formatSelect.value === 'wav') {
+        bitrateSelect.disabled = true;
+        wavNotice.classList.remove('hidden');
+      } else {
+        bitrateSelect.disabled = false;
+        wavNotice.classList.add('hidden');
+      }
+    });
+
+    // Yükleme (Loading) durumu kontrolü
+    function setLoading(isLoading, customText = null) {
+      submitBtn.disabled = isLoading;
+      videoInput.disabled = isLoading;
+      formatSelect.disabled = isLoading;
+      if (!isLoading) {
+        bitrateSelect.disabled = formatSelect.value === 'wav';
+      } else {
+        bitrateSelect.disabled = true;
+      }
+      startTimeInput.disabled = isLoading;
+      endTimeInput.disabled = isLoading;
+
+      if (isLoading) {
+        btnIcon.classList.add('hidden');
+        btnSpinner.classList.remove('hidden');
+        btnText.textContent = customText || 'Dönüştürülüyor, lütfen bekleyin...';
+      } else {
+        btnIcon.classList.remove('hidden');
+        btnSpinner.classList.add('hidden');
+        btnText.textContent = 'Sese Dönüştür ve İndir';
+      }
+    }
+
+    // Content-Disposition başlığından dosya adını ayıkla
+    function extractFilename(response, fallbackName, format) {
+      const customHeader = response.headers.get('X-Download-Filename');
+      if (customHeader) return customHeader;
+
+      const disposition = response.headers.get('Content-Disposition');
+      if (disposition) {
+        const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (utf8Match && utf8Match[1]) {
+          return decodeURIComponent(utf8Match[1]);
+        }
+        const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+        if (asciiMatch && asciiMatch[1]) {
+          return asciiMatch[1];
+        }
+      }
+
+      const base = fallbackName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'audio';
+      return `${base}.${format}`;
+    }
+
+    // Tek bir dosyayı sunucuya gönderip Blob olarak indir
+    async function convertSingleFile(file, index, total) {
+      const formData = new FormData();
+      formData.append('video', file);
+      formData.append('format', formatSelect.value);
+      if (formatSelect.value === 'mp3') {
+        formData.append('bitrate', bitrateSelect.value);
+      }
+      if (startTimeInput.value.trim()) {
+        formData.append('startTime', startTimeInput.value.trim());
+      }
+      if (endTimeInput.value.trim()) {
+        formData.append('endTime', endTimeInput.value.trim());
+      }
+
+      if (total > 1) {
+        setLoading(true, `Dönüştürülüyor (${index + 1}/${total}): ${file.name}`);
+      } else {
+        setLoading(true, 'Ses dosyası hazırlanıyor, lütfen bekleyin...');
+      }
+
+      const response = await fetch('/convert', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Dönüştürme işlemi başarısız oldu.';
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errorMessage = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errorMessage);
+      }
+
+      const blob = await response.blob();
+      const downloadName = extractFilename(response, file.name, formatSelect.value);
+
+      // Tarayıcıda Blob üzerinden otomatik indirme tetikleyicisi
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = downloadName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 5000);
+    }
+
+    // Form gönderimi
+    convertForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideStatus();
+
+      if (selectedFiles.length === 0) {
+        showStatus('Lütfen önce dönüştürmek istediğiniz bir video dosyası seçin veya sürükleyin.', 'error');
+        return;
+      }
+
+      try {
+        for (let i = 0; i < selectedFiles.length; i++) {
+          await convertSingleFile(selectedFiles[i], i, selectedFiles.length);
+        }
+
+        const countMsg = selectedFiles.length > 1
+          ? `${selectedFiles.length} video başarıyla sese dönüştürüldü ve indirildi!`
+          : 'Dönüştürme tamamlandı! Ses dosyası otomatik olarak indirildi.';
+        showStatus(countMsg, 'success');
+      } catch (err) {
+        showStatus(err.message || 'Beklenmeyen bir hata oluştu.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>
